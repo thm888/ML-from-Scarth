@@ -49,6 +49,7 @@ def main(url, MAX_EPOCHES=10,BATCH_SIZE=10):
     total_samples = X_train.shape[-1]
     print('总样本数量',total_samples)
     loss_history = []
+    acc_history = []
 
     for epoch in range(MAX_EPOCHES):
         #打乱数据排列
@@ -58,6 +59,7 @@ def main(url, MAX_EPOCHES=10,BATCH_SIZE=10):
         step = 0
         #开始训练一个EPOCH
         for idx in range(0, total_samples, BATCH_SIZE):
+            mlp.train()
             mlp.zero_grads() #梯度清零
             step += 1 
             X_batch = X_shuffled[:,idx: idx+BATCH_SIZE]
@@ -72,20 +74,37 @@ def main(url, MAX_EPOCHES=10,BATCH_SIZE=10):
             mlp.backward(grad)
             #参数更新
             optimizor.step(mlp.layers)
+            #推理acc
+            mlp.eval()
+            acc = np.mean(mlp.forward(X_test).argmax(axis=0) == y_test)
+            acc_history.append(acc)
 
+    print(mlp.parameters())
     mlp.eval()
     acc = np.mean(mlp.forward(X_test).argmax(axis=0) == y_test)
-    print("分类准确率:",acc)
-    print('y_true',y_test)
-    print(mlp.parameters())
-    # 绘制损失曲线
-    plt.figure(figsize=(10, 6))
-    plt.plot(loss_history, label="Training Loss")
-    plt.xlabel("Step")
-    plt.ylabel("Loss")
-    plt.title("Training Loss Curve")
-    plt.legend()
+    print('最后一次分类准确度:',acc)
+    # 创建双纵坐标轴
+    ax1 = plt.gca()  # 获取当前轴
+    ax2 = ax1.twinx()
+
+    # 绘制损失曲线（左轴）
+    color = 'tab:red'
+    ax1.set_xlabel('Step')
+    ax1.set_ylabel('Loss', color=color)
+    ax1.plot(loss_history, color=color, label='Training Loss')
+    ax1.tick_params(axis='y', labelcolor=color)
+
+    # 绘制准确率曲线（右轴）
+    color = 'tab:blue'
+    ax2.set_ylabel('Accuracy', color=color)
+    ax2.plot(acc_history, color=color, label='Test Accuracy')
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    # 添加图例和标题
+    plt.title('Training Loss and Test Accuracy')
+    fig = plt.gcf()
+    fig.legend(loc='upper left', bbox_to_anchor=(0.1, 0.9))  # 调整图例位置
     plt.grid(True)
     plt.show()
 
-main('xor_dataset.csv',1000,128) 
+main('xor_dataset.csv',1000,256) 
